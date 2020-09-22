@@ -1,11 +1,25 @@
-;globals  TO DO uncertainty as global or local
+globals [  ;TO DO uncertainty as global or local
+;;--------------------------------------------------
+;; Coefficients employed in the individual DM process
+;;--------------------------------------------------
+
+b0                                   ; Regression constant
+b1                                   ; beta Sex
+b2                                   ; beta Age
+b3                                   ; beta Env concerns
+b4                                   ; beta Health concerns
+b5                                   ; beta WTP (or price sensitivity?)
+b6                                   ; beta Nutritional awareness
+b7                                   ; beta Socio economic status index
+b8                                   ; accessibility
+]
 
 ; ************************************************
 ; **********     Agent definition     ************
 ; ************************************************
 
 ; Create  breeds of neighbourhood
-breed [ districts district ]  ; agentset of patches7neighbourhood where store agents and consumer agents are located
+breed [ districts district ]  ; agentset of patches/neighbourhood where store agents and consumer agents are located
 
 
 ; Create 3 breeds of store agent
@@ -15,68 +29,56 @@ breed [ proximity-stores proximity-store ]
 
 
 ;Create different types of consumer agents
-breed [consumer-as consumer-a]
-breed [consumer-bs consumer-b]
-breed [consumer-cs consumer-c]
+breed [consumers consumer]
 
 ; Create supermarket variables
 supermarkets-own [
-  attractiveness ; Records the stores attractivess score for price index and food quality
-  customers ; Records the who number of each consumer agent that visits the store
-  online-shopping ; Records the number of online purchase
-  moving ;if number of constumer is low and no satisfaction, move to another district
+  location                  ; randomly distributed in the district at the initial state
+  attractiveness            ; Records the stores attractivess score for price index and food quality
+  customers                 ; Records the number of each consumer agent that visits the store
+  online-shopping           ; Records the number of online purchase
+
 ]
 
 ; Create convenience-store variables
 convenience-stores-own [
-  attractiveness ; Records the stores attractivess score for price index and food quality
-  customers ; Records the who number of each consumer agent that visits the store
-  online-shopping ; Records the number of online purchase
-  moving ;if number of constumer is low, move to another district
+  location
+  attractiveness           ; Records the stores attractivess score for price index and food quality
+  customers                ; Records the who number of each consumer agent that visits the store
+  online-shopping          ; Records the number of online purchase
 ]
 
 ; Create proximity-store variables
 proximity-stores-own [
-  attractiveness ; Records the stores attractivess score for price index and food quality
-  customers ; Records the who number of each consumer agent that visits the store
-  online-shopping ; Records the number of online purchase
-  moving ;if number of constumer is low, move to another district
+  location
+  attractiveness           ; Records the stores attractivess score for price index and food quality
+  customers                ; Records the who number of each consumer agent that visits the store
+  online-shopping          ; Records the number of online purchase
 ]
 
 ; Create consumer variables
-consumer-as-own [
-  home-location ; Stores the home location of consumer
-  destination ; Keeps track of the consumers current destination
-  probability ; utility function including all factors that keeps track of the consumers current probability of purchasing healthy food
-  distance-travelled ; Keeps track of the distance travelled by the consumer
-  health ; keep track record of health status
-  moving ;if health is low, move to another district where you can afford to buy healthy food (listening to your network)but it not n italin caracteristic may be only shops move
+consumers-own [
+  age
+  sex
+  env                      ; stores the level of env concerns
+  health.con               ; stores the level of health concerns
+  wtp                      ; willingness to pay or price sensitivity?
+  nutr.awareness           ; stores the level of awareness ( 0=unaware, 0.5 =medium  1=aware) info about healthy food)
+  sc.s.index               ; indice di status socio economico
+  accessibility            ; Keeps track of max distance a counsumer is willing to travel
+  home-location            ; stores the home location of consumer
+  purchase.prb.t0          ; individual likelihood of purchasing healthy food at initiation
+  purchase.prb             ; individual likelihood of purchasing healthy food
+  Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet)
 ]
 
-consumer-bs-own [
-  home-location
-  destination
-  probability
-  visits
-  distance-travelled
-  moving
-]
-
-consumer-cs-own [
-  home-location
-  destination
-  probability
-  visits
-  distance-travelled
-  moving
-]
 
 ; Create patches variables
 districts-own [
-  area-type ; Records the geo-demographic type of the patch
-  total-health ; sumup all health status of current agents
-  total-purchase ; n. of times a consumer hit local shops, to serve as reference for shops that want to move
-  fai ; food accessibility index
+  area-type               ; Records the geo-demographic type of the patch
+  total-health            ; sumup all health status of current agents
+  total-consumers         ; n. of times a consumer hit local shops, to serve as reference for shops that want to move
+  fai                     ; food accessibility index
 ]
 
 ; ************************************************
@@ -84,6 +86,42 @@ districts-own [
 ; ************************************************
 
 ; Procedure called every time the model iterates
+
+
+;; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
+to init-parameters
+  set b0  -6.321  ; constant
+  set b1  .655    ; sex
+  set b2  .016    ; age
+  set b3  .287    ; env concerns
+  set b4  .623    ; health concerns
+  set b5  .178    ; WTP (or price sensitivity?)
+  set b6  .101    ; beta nutritional awareness
+  set b7  .100    ; beta socio economic status index
+
+end
+
+;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at the beginning of the simulation
+to-report est-prob-at-time-zero
+  let y ( b0 + (b1 * sex) + (b2 * age) + (b3 * env) + (b4 * health.con)
+             + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) + (b8 * accessibility) )
+  let above e ^ y
+  let below (1 + e ^ y)
+  report (1 - (above / below))
+end
+
+;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at any time during the simulation
+to-report est-prob
+  let y ( b0 + (b1 * sex) + (b2 * age) + (b3 * env) + (b4 * health.con)
+             + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) + (b8 * accessibility) )
+  let above e ^ y
+  let below (1 + e ^ y)
+  report (1 - (above / below))
+end
+
+
+ ;TO consumer-move                   ;if health is low, move to another district where you can afford to buy healthy food (looking at the fai (food accessibility index))but it not n italin caracteristic may be only shops move
+ ;TO shop-move                          ;if number of constumer is low and no satisfaction, move to another district
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
