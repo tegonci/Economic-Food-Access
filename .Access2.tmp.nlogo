@@ -1,5 +1,5 @@
 globals [
- ; b0      ; constant
+  b0      ; constant
  ; b1      ; edu
  ; b2      ; age
   b3      ; env concerns
@@ -55,18 +55,30 @@ consumers-own [
   purchase-prb-0           ; individual likelihood of purchasing healthy food at initiation, utility function discrete choice
   purchase-prb             ; individual likelihood of purchasing healthy food, utility function discrete choice
   Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet)
-  need-to-shop
+  need-to-shop             ; activity
+  healthy.choice           ; results of shop behaviours
+  destination              ; best retailer
+  newlocation              ; if no best retailer options
 
 ]
 
 supermarkets-own [
   localization
+  food-quality              ; assume th ehealthyness of food sold in the shop as a basket of products
+  price-index               ; assign a price index corresponding to the one of hte district
+  customers                 ; Records the who number of each consumer agent that visits the store
 ]
 convenience-stores-own [
   localization
+  food-quality
+  price-index
+  customers
 ]
 proximity-stores-own [
   localization
+  food-quality
+  price-index
+  customers
 ]
 ; ************************************************
 ; ************    Setup procedures    ************
@@ -162,30 +174,41 @@ end
 ; Procedures to set up retailers agents
 to setup-supermarkets
   create-supermarkets number-of-supermarkets [
-    ;move-to one-of districts with [ color = brown or color = blue] ; set starting position veryfy how can they be not one over the other
       set shape "square" ; Set the shape of the supermarket store agent to square
       set color red ; Set the colour of the supermarket store agent to red
+      set price-index   random-float 1
+      set food-quality  random-float 1
       set localization one-of districts with [ color = brown or color = blue]
       move-to localization ;if not any? supermarkets-here   ;how to make just one supermarket on a patch?
-
+      set customers 0
   ]
 end
 
 to setup-convenience-stores
   create-convenience-stores number-of-convenience-stores [
-    ;move-to one-of districts with [ color = green or color = blue or color = orange or color = yellow or color = pink] ; set starting position
-      set shape "square" ; Set the shape of the supermarket store agent to square
+      set shape "circle 2" ; Set the shape of the supermarket store agent to square
       set color black ; Set the colour of the supermarket store agent to red
-      setxy random-xcor random-ycor ;if not any? convenience-stores-here [ sprout-convenience-stores 1]
-    ]
+      set price-index random-float 1
+      set food-quality random-float 1
+      set customers 0
+      set localization one-of districts with [ color = lime or color = blue or color = orange or color = yellow or color = pink]
+       move-to localization;ifelse not any? convenience-stores-here [move-to localization][
+      ;move-to one-of patches with[not any? convenience-stores-here]
+    ;]
+  ]
 end
 
 to setup-proximity-stores
   create-proximity-stores number-of-proximity-stores [
-    ;move-to one-of districts with [ color = green or color = blue or color = orange or color = yellow or color = pink] ; set starting position
-      set shape "square" ; Set the shape of the supermarket store agent to square
+      set shape "star" ; Set the shape of the supermarket store agent to square
       set color cyan ; Set the colour of the supermarket store agent to red
-      setxy random-xcor random-ycor ;if not any? proximity-stores-here [ sprout-proximity-stores 1]
+      set price-index random-float 1
+      set food-quality random-float 1
+      set customers 0
+      set localization one-of districts with [ color = lime or color = blue or color = orange or color = yellow or color = pink]
+       move-to localization;ifelse not any? proximity-stores-here [move-to localization][
+      ;move-to one-of patches with[not any? proximity-stores-here]
+    ;]
     ]
 end
 
@@ -197,41 +220,48 @@ to setup-consumers
     set color 125 ; Set the colour of the supermarket store agent to red
     ;setxy random-xcor random-ycor
     set need-to-shop 0
-    ;set purchase-prb purchase-prb0
+    set healthy.choice 0
+    set purchase-prb 0
     ;set age random-float 65
     ;set edu random-float 1.0
     set env random-float 1.0
     set health.con random-float 1.0
-    set wtp random-float 1.0
     set nutr.awareness random-float 1.0
     set sc.s.index random-float 1.0    ;verify how between values can be assigned
-    ;set accessibility random-float 1.0
+    set destination 0
     set Total.health 10
   ]
 
   ask consumers [
     if sc.s.index <= 0.24
     [set location district 3
-     move-to location]
+     set wtp [fai] of district 3
+     move-to location
+     ]
 
     if sc.s.index > 0.24 and sc.s.index <= 0.38
     [set location district 4
+     set wtp [fai] of district 4
      move-to location]
 
     if sc.s.index > 0.38 and sc.s.index <= 0.51
     [set location district 5
+     set wtp [fai] of district 5
      move-to location]
 
     if sc.s.index > 0.51 and sc.s.index <= 0.64
     [set location district 2
+     set wtp [fai] of district 2
      move-to location]
 
     if sc.s.index > 0.64 and sc.s.index <= 0.77
     [set location district 1
+     set wtp [fai] of district 1
      move-to location]
 
-    if sc.s.index > 0.77 and sc.s.index <= 0.99
+    if sc.s.index > 0.77 and sc.s.index <= 1
     [set location district 0
+     set wtp [fai] of district 0
      move-to location]
   ]
 
@@ -244,39 +274,78 @@ end
 
 ; Procedure called every time the model iterates
 
-
 ; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
 ; TO DO
 to purchse-prb-init-parameters
-  ;set b0  -6.321  ; constant
+  set b0  -6.321  ; constant
   ;set b1  .655    ; edu
   ;set b2  .016    ; age
   set b3  .287    ; env concerns
   set b4  .623    ; health concerns
-  set b5  .178    ; WTP (or price sensitivity?)
+  set b5  .101    ; perceived living cost used as a proxy for price sensitivity
   set b6  .101    ; beta nutritional awareness
   set b7  .100    ; beta socio economic status index
 ; setb8
 end
 
+To go
+  if ticks >= 365 [stop]
 
-;; diventa la probability to shop Report the probability to consume a meal based on healthy meals using the inverse log reg function at the beginning of the simulation
-;to-report purchase-prb0
-  ;let y ( (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) ) ;TO DO *noseyfactor to mimic crises
-  ;let above e ^ y
-  ;let below (1 + e ^ y)
-  ;report (1 - (above / below))
+  ask consumers [
+    set need-to-shop need-to-shop + random-float 1
+    ifelse need-to-shop > 0.4 [ set purchase-prb est-prb] [set need-to-shop 0]
+  ]
+  tick
+end
+
+to shop-behaviour ; funzione per vedere quanti scelgono di fare scelte healthy
+  ask consumers [
+    set purchase-prb est-prb
+    ;first hypotesis with random
+    ;let random.p precision(random-float 1)2
+    ;if (purchase-prb > random.p) [
+     ;set destination one-of turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores]
+      ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
+      ;let best-candidate min-one-of candidate-stores [ distance myself + price-index ]
+      ;set destination best-candidate
+    ]
+
+ ifelse purchase-prb <= 0.3 [
+    let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
+    let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
+    set destination best-candidate
+      ;if not any? best-candidate [relocate]
+    set healthy.choice healthy.choice + 0
+    set Total.health Total.health - 0.5 ; unhealthy diets are responsible of health issues
+    ]
+    [
+    let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
+    ifelse  [sc.s.index] of myself > [price-index] of candidate-stores
+      [let best-candidate max-one-of candidate-stores [ distance myself + [food-quality] of candidate-stores ]
+       set destination best-candidate
+       set healthy.choice healthy.choice + 1
+       set Total.health Total.health + 0.5
+      ]
+      [let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
+       set destination best-candidate
+       set healthy.choice healthy.choice + 0
+       set Total.health Total.health - 0.5]
+   ]
+end
+
+
+;; probability to shop a meal based on healthy meals using the inverse log reg function at any time during the simulation
+; prb is not updating, i
+to-report est-prb
+ let y (b0 + (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) )
+ let above e ^ y
+ let below (1 + e ^ y)
+ report (1 - (above / below)) * uncertainty
+end
+
+
+;To relocate
 ;end
-
-;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at any time during the simulation
-;to-report purchase-prb
- ; let y ( (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) ) ;* noseyfactor
- ; let above e ^ y
- ; let below (1 + e ^ y)
- ; report (1 - (above / below))
-;end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 307
@@ -348,7 +417,7 @@ number-of-supermarkets
 number-of-supermarkets
 0
 7
-3.0
+2.0
 1
 1
 NIL
@@ -363,7 +432,7 @@ number-of-convenience-stores
 number-of-convenience-stores
 0
 20
-8.0
+14.0
 1
 1
 NIL
@@ -378,7 +447,7 @@ number-of-proximity-stores
 number-of-proximity-stores
 0
 20
-9.0
+14.0
 1
 1
 NIL
@@ -395,6 +464,21 @@ number-of-consumers
 100
 50.0
 1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+38
+359
+210
+392
+uncertainty
+uncertainty
+0
+1
+0.3
+0.1
 1
 NIL
 HORIZONTAL
