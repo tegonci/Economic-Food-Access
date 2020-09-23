@@ -170,9 +170,49 @@ to setup-consumers
   create-consumers number-of-consumers [
     set shape "person" ; Set the shape of the supermarket store agent to square
     set color 125 ; Set the colour of the supermarket store agent to red
+    setxy random-xcor random-ycor
   ]
 end
 
+
+; ************************************************
+; ************     Go procedures      ************
+; ************************************************
+
+; Procedure called every time the model iterates
+
+
+;; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
+
+to init-parameters
+  set b0  -6.321  ; constant
+  set b1  .655    ; sex
+  set b2  .016    ; age
+  set b3  .287    ; env concerns
+  set b4  .623    ; health concerns
+  set b5  .178    ; WTP (or price sensitivity?)
+  set b6  .101    ; beta nutritional awareness
+  set b7  .100    ; beta socio economic status index
+
+end
+
+;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at the beginning of the simulation
+to-report est-prob-at-time-zero
+  let y ( b0 + (b1 * sex) + (b2 * age) + (b3 * env) + (b4 * health.con)
+             + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) + (b8 * accessibility) )
+  let above e ^ y
+  let below (1 + e ^ y)
+  report (1 - (above / below))
+end
+
+;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at any time during the simulation
+to-report est-prob
+  let y ( b0 + (b1 * sex) + (b2 * age) + (b3 * env) + (b4 * health.con)
+             + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) + (b8 * accessibility) )
+  let above e ^ y
+  let below (1 + e ^ y)
+  report (1 - (above / below))
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 307
