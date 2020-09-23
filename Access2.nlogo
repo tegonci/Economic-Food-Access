@@ -1,7 +1,7 @@
 ; ************************************************
 ; **********     Agent definition     ************
 ; ************************************************
-
+extensions [bitmap]
 ; Create  breeds of neighbourhood
 breed [ districts district ]  ; agentset of patches/neighbourhood where store agents and consumer agents are located
 
@@ -86,6 +86,7 @@ to setup-districts ;
     set pri 0.99
     set fai 0.36
     setxy 10 10
+
     ;set n.consumer 100
   ]
 
@@ -133,6 +134,9 @@ to setup-districts ;
     ;set n.consumer 100
   ]
 
+  let bmap bitmap:from-view
+  bitmap:copy-to-pcolors bmap true
+  ;;ask turtles [ht] ; to show that the turtle shape is now painted to pcolors
 
 end
 
@@ -143,6 +147,12 @@ to setup-supermarkets
       set shape "square" ; Set the shape of the supermarket store agent to square
       set color red ; Set the colour of the supermarket store agent to red
     setxy random-xcor random-ycor ;if not any? supermarkets-here [ sprout 1] how to make just one supermarket on a patch?
+    if any? patches with[pcolor = brown][
+     let _myAgentSet patches with [pcolor = brown]
+      if any? _myAgentSet with[not any? turtles-here][
+        move-to one-of _myAgentSet with[not any? turtles-here]
+      ]
+    ]
 
   ]
 end
@@ -172,6 +182,7 @@ to setup-consumers
     set color 125 ; Set the colour of the supermarket store agent to red
   ]
 end
+
 
 @#$#@#$#@
 GRAPHICS-WINDOW
