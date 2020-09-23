@@ -32,8 +32,7 @@ breed [consumers consumer]
 
 ; Create patches variables
 districts-own [
-  area-type               ; Records the geo-demographic type of the patch
-  n.citizens              ;
+  n.citizens              ; count the number of citizen per district at each 365 day 1 year period
   total-health            ; sumup all health status of current agents
   total-consumers         ; n. of times a consumer hit local shops, to serve as reference for shops that want to move
   fai                     ; food accessibility index
@@ -44,7 +43,7 @@ districts-own [
 ; Create consumer variables
 consumers-own [
   ;age
-  ;edu                      ; level of education
+  ;edu                     ; level of education
   env                      ; stores the level of env concerns
   health.con               ; stores the level of health concerns
   wtp                      ; willingness to pay or price sensitivity?
@@ -52,33 +51,35 @@ consumers-own [
   sc.s.index               ; indice di status socio economico
   ;accessibility           ; Keeps track of max distance a counsumer is willing to travel
   location                 ; stores the home location of consumer
-  purchase-prb-0           ; individual likelihood of purchasing healthy food at initiation, utility function discrete choice
-  purchase-prb             ; individual likelihood of purchasing healthy food, utility function discrete choice
-  Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet)
-  need-to-shop             ; activity
+  purchase-prb             ; individual likelihood of purchasing healthy food, utility function discrete choice, should be done weekly (every 7 ticks)
+  Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet), updated weekly
+  need-to-shop             ; activity updated weekly
   healthy.choice           ; results of shop behaviours
   destination              ; best retailer
-  newlocation              ; if no best retailer options
+  newlocation              ; if no best retailer options, relocate to a new district with better fai
 
 ]
 
 supermarkets-own [
-  localization
-  food-quality              ; assume th ehealthyness of food sold in the shop as a basket of products
-  price-index               ; assign a price index corresponding to the one of hte district
+  localization              ; position in district
+  food-quality              ; assume the healthyness of food sold in the shop as a basket of products
+  price-index               ; assign a price index corresponding to the one of the district
   customers                 ; Records the who number of each consumer agent that visits the store
+  attractiveness            ; convenience, ratio food quality/price index
 ]
 convenience-stores-own [
   localization
   food-quality
   price-index
   customers
+  attractiveness
 ]
 proximity-stores-own [
   localization
   food-quality
   price-index
   customers
+  attractiveness
 ]
 ; ************************************************
 ; ************    Setup procedures    ************
@@ -95,7 +96,6 @@ to setup
   setup-convenience-stores
   setup-proximity-stores
   setup-consumers
-
 
 end
 
@@ -164,6 +164,7 @@ to setup-districts ;
   [ set color brown
     set sci 0.77
     set pri 0.35
+    set fai 0.55 ;TO DO correct
     setxy 4 5
     ;set n.consumer 100
   ]
@@ -178,6 +179,8 @@ to setup-supermarkets
       set color red ; Set the colour of the supermarket store agent to red
       set price-index   random-float 1
       set food-quality  random-float 1
+      set attractiveness food-quality / price-index
+      set customers 0
       set localization one-of districts with [ color = brown or color = blue]
       move-to localization ;if not any? supermarkets-here   ;how to make just one supermarket on a patch?
       set customers 0
@@ -190,6 +193,8 @@ to setup-convenience-stores
       set color black ; Set the colour of the supermarket store agent to red
       set price-index random-float 1
       set food-quality random-float 1
+      set attractiveness food-quality / price-index
+      set customers 0
       set customers 0
       set localization one-of districts with [ color = lime or color = blue or color = orange or color = yellow or color = pink]
        move-to localization;ifelse not any? convenience-stores-here [move-to localization][
@@ -204,6 +209,7 @@ to setup-proximity-stores
       set color cyan ; Set the colour of the supermarket store agent to red
       set price-index random-float 1
       set food-quality random-float 1
+      set attractiveness food-quality / price-index
       set customers 0
       set localization one-of districts with [ color = lime or color = blue or color = orange or color = yellow or color = pink]
        move-to localization;ifelse not any? proximity-stores-here [move-to localization][
@@ -294,13 +300,28 @@ To go
   ask consumers [
     set need-to-shop need-to-shop + random-float 1
     ifelse need-to-shop > 0.4 [ set purchase-prb est-prb] [set need-to-shop 0]
-  ]
+  ] ;prb it is never 0
   tick
 end
 
-to shop-behaviour ; funzione per vedere quanti scelgono di fare scelte healthy
+to shop-behaviour ; is not working
+  ; at the end this procedure I should find the purchase probability of healthy food in population if they find the good conditionin the stores around
+  ; I would like to plot the probbaility of healthy.choice of population, and the actual purchase ideally explore it against fai (food accessibility index)
   ask consumers [
     set purchase-prb est-prb
+    ifelse  purchase-prb > [fai] of [districts] of myself
+    [set healthy.choice 1]
+    [set healthy.choice 0]
+  ]
+  tick
+    ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
+    ;felse  [sc.s.index] of myself > [attractiveness] of candidate-stores [
+     ; set healthy.choice healthy.choice + 1
+      ; set Total.health Total.health + 0.5
+      ;]
+     ; [set healthy.choice healthy.choice + 0
+     ;set Total.health Total.health - 0.5]
+     ;]
     ;first hypotesis with random
     ;let random.p precision(random-float 1)2
     ;if (purchase-prb > random.p) [
@@ -308,43 +329,47 @@ to shop-behaviour ; funzione per vedere quanti scelgono di fare scelte healthy
       ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
       ;let best-candidate min-one-of candidate-stores [ distance myself + price-index ]
       ;set destination best-candidate
-    ]
-
- ifelse purchase-prb <= 0.3 [
-    let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
-    let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
-    set destination best-candidate
+    ;]
+ ; not working
+ ;ifelse purchase-prb <= 0.3 [
+    ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
+    ;let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
+    ;set destination best-candidate
       ;if not any? best-candidate [relocate]
-    set healthy.choice healthy.choice + 0
-    set Total.health Total.health - 0.5 ; unhealthy diets are responsible of health issues
-    ]
-    [
-    let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
-    ifelse  [sc.s.index] of myself > [price-index] of candidate-stores
-      [let best-candidate max-one-of candidate-stores [ distance myself + [food-quality] of candidate-stores ]
-       set destination best-candidate
-       set healthy.choice healthy.choice + 1
-       set Total.health Total.health + 0.5
-      ]
-      [let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
-       set destination best-candidate
-       set healthy.choice healthy.choice + 0
-       set Total.health Total.health - 0.5]
-   ]
+    ;set healthy.choice healthy.choice + 0
+    ;set Total.health Total.health - 0.5 ; unhealthy diets are responsible of health issues
+    ;]
+    ;[
+    ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
+    ;ifelse  [sc.s.index] of myself > [attractiveness] of candidate-stores
+     ; [
+      ;let best-candidate max-one-of candidate-stores [ distance myself + [food-quality] of candidate-stores ]
+      ; set destination best-candidate
+       ;set healthy.choice healthy.choice + 1
+       ;set Total.health Total.health + 0.5
+      ;]
+      ;[
+      ;let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
+      ;set destination best-candidate
+      ; set healthy.choice healthy.choice + 0
+  ; set Total.health Total.health - 0.5]]
 end
 
 
 ;; probability to shop a meal based on healthy meals using the inverse log reg function at any time during the simulation
-; prb is not updating, i
+; the euqtion is working but is not updating I obtain always the same value (0,5). i used uncertainty, to check if the equation was working.
 to-report est-prb
  let y (b0 + (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) )
  let above e ^ y
  let below (1 + e ^ y)
- report (1 - (above / below)) * uncertainty
+ report (1 - (above / below)) ;* uncertainty obviously need to be around a standard deviation etc to check
 end
 
 
-;To relocate
+;To relocate -consumer, if agents not satisfied they move to the closer district with better fai
+;end
+
+;To relocate -shops, if agents not satisfied of hte number of client they should move to the closer  district with better overall number of client (sum of all client in teh shop in the districts)
 ;end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -477,7 +502,7 @@ uncertainty
 uncertainty
 0
 1
-0.3
+1.0
 0.1
 1
 NIL
