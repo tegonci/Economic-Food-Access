@@ -1,19 +1,3 @@
-globals [  ;TO DO uncertainty as global or local
-;;--------------------------------------------------
-;; Coefficients employed in the individual DM process
-;;--------------------------------------------------
-
-b0                                   ; Regression constant
-b1                                   ; beta Sex
-b2                                   ; beta Age
-b3                                   ; beta Env concerns
-b4                                   ; beta Health concerns
-b5                                   ; beta WTP (or price sensitivity?)
-b6                                   ; beta Nutritional awareness
-b7                                   ; beta Socio economic status index
-b8                                   ; accessibility
-]
-
 ; ************************************************
 ; **********     Agent definition     ************
 ; ************************************************
@@ -21,114 +5,21 @@ b8                                   ; accessibility
 ; Create  breeds of neighbourhood
 breed [ districts district ]  ; agentset of patches/neighbourhood where store agents and consumer agents are located
 
-
 ; Create 3 breeds of store agent
 breed [ supermarkets supermarket ]
 breed [ convenience-stores convenience-store ]
 breed [ proximity-stores proximity-store ]
 
-
-;Create different types of consumer agents
-breed [consumers consumer]
-
-; Create supermarket variables
-supermarkets-own [
-  location                  ; randomly distributed in the district at the initial state
-  attractiveness            ; Records the stores attractivess score for price index and food quality
-  customers                 ; Records the number of each consumer agent that visits the store
-  online-shopping           ; Records the number of online purchase
-
-]
-
-; Create convenience-store variables
-convenience-stores-own [
-  location
-  attractiveness           ; Records the stores attractivess score for price index and food quality
-  customers                ; Records the who number of each consumer agent that visits the store
-  online-shopping          ; Records the number of online purchase
-]
-
-; Create proximity-store variables
-proximity-stores-own [
-  location
-  attractiveness           ; Records the stores attractivess score for price index and food quality
-  customers                ; Records the who number of each consumer agent that visits the store
-  online-shopping          ; Records the number of online purchase
-]
-
-; Create consumer variables
-consumers-own [
-  age
-  sex
-  env                      ; stores the level of env concerns
-  health.con               ; stores the level of health concerns
-  wtp                      ; willingness to pay or price sensitivity?
-  nutr.awareness           ; stores the level of awareness ( 0=unaware, 0.5 =medium  1=aware) info about healthy food)
-  sc.s.index               ; indice di status socio economico
-  accessibility            ; Keeps track of max distance a counsumer is willing to travel
-  home-location            ; stores the home location of consumer
-  purchase.prb.t0          ; individual likelihood of purchasing healthy food at initiation
-  purchase.prb             ; individual likelihood of purchasing healthy food
-  Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet)
-]
-
-
-; Create patches variables
+;Create patches variables
 districts-own [
   area-type               ; Records the geo-demographic type of the patch
-  citizens                ;
-  n.ofshop                ;
+  n.citizens              ;
   total-health            ; sumup all health status of current agents
   total-consumers         ; n. of times a consumer hit local shops, to serve as reference for shops that want to move
   fai                     ; food accessibility index
-  price-index             ; price index for consumer
-  socio economical status index ; index calcualted on
-
+  sci                     ; socio economical status index
 ]
-
 ; ************************************************
-; ************     Go procedures      ************
-; ************************************************
-
-; Procedure called every time the model iterates
-
-
-;; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
-to init-parameters
-  set b0  -6.321  ; constant
-  set b1  .655    ; sex
-  set b2  .016    ; age
-  set b3  .287    ; env concerns
-  set b4  .623    ; health concerns
-  set b5  .178    ; WTP (or price sensitivity?)
-  set b6  .101    ; beta nutritional awareness
-  set b7  .100    ; beta socio economic status index
-
-end
-
-;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at the beginning of the simulation
-to-report est-prob-at-time-zero
-  let y ( b0 + (b1 * sex) + (b2 * age) + (b3 * env) + (b4 * health.con)
-             + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) + (b8 * accessibility) )
-  let above e ^ y
-  let below (1 + e ^ y)
-  report (1 - (above / below))
-end
-
-;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at any time during the simulation
-to-report est-prob
-  let y ( b0 + (b1 * sex) + (b2 * age) + (b3 * env) + (b4 * health.con)
-             + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) + (b8 * accessibility) )
-  let above e ^ y
-  let below (1 + e ^ y)
-  report (1 - (above / below))
-end
-
-
- ;TO consumer-move                   ;if health is low, move to another district where you can afford to buy healthy food (looking at the fai (food accessibility index))but it not n italin caracteristic may be only shops move
- ;TO shop-move                          ;if number of constumer is low and no satisfaction, move to another district
-
-;************************************************
 ; ************    Setup procedures    ************
 ; ************************************************
 
@@ -136,82 +27,114 @@ end
 to setup
   clear-all
   reset-ticks
+
+  setup-patches
   setup-districts
   setup-supermarkets
   setup-convenience-stores
   setup-proximity-stores
-  setup-consumers
+
+
 end
 
-; Procedure to configure patches
-to setup-patches
+ to setup-patches
 
   ask patches [
     set pcolor white
   ]
+end
+; Procedure to configure districts
 
-  ask patches with [ pxcor >= 9 and pxcor < 12 and pycor >= 0 and pycor < 3 ] [
-    set pcolor yellow
+to setup-districts ;
+
+  create-districts 6
+  [ set shape "square"
+    set size 5
+    setxy random-xcor random-ycor
   ]
 
-  ask patches with [ pxcor >= 3 and pxcor < 6 and pycor >= 3 and pycor < 6 ] [
-    set pcolor orange
+  ask district 0
+  [ set color yellow
+    set sci 0.2
+    setxy 10 10
+    ;set n.consumer 100
   ]
 
-  ask patches with [ pxcor >= 6 and pxcor < 9 and pycor >= 6 and pycor < 9 ] [
-    set pcolor yellow
+  ask district 1
+  [ set color lime
+    set sci 0.4
+    setxy 2 11
+    ;set n.consumer 100
   ]
 
-  ask patches with [ pxcor >= 6 and pxcor < 9 and pycor >= 3 and pycor < 6 ] [
-    set pcolor yellow
+  ask district 2
+  [ set color orange
+    set sci 0.51
+    setxy 17 3
+    ;set n.consumer 100
   ]
 
-  ask patches with [ pxcor >= 12 and pxcor < 15 and pycor >= 3 and pycor < 6 ] [
-    set pcolor blue
+  ask district 3
+  [ set color blue
+    set sci 0.64
+    setxy 17 9
+    ;set n.consumer 100
   ]
 
-  ask patches with [ pxcor >= 15 and pxcor < 18 and pycor >= 6 and pycor < 9 ] [
-    set pcolor blue
+  ask district 4
+  [ set color pink
+    set sci 0.77
+    setxy 12 15
+    ;set n.consumer 100
   ]
 
-  ask patches with [ pxcor >= 18 and pxcor < 21 and pycor >= 6 and pycor < 9 ] [
-    set pcolor orange
+  ask district 5
+  [ set color brown
+    set sci 0.99
+    setxy 4 5
+    ;set n.consumer 100
   ]
 
-  ask patches with [ pxcor >= 3 and pxcor < 6 and pycor >= 12 and pycor < 15 ] [
-    set pcolor pink
-  ]
 
-  ask patches with [ pxcor >= 15 and pxcor < 18 and pycor >= 12 and pycor < 15 ] [
-    set pcolor pink
-  ]
+end
 
-  ask patches with [ pxcor >= 12 and pxcor < 15 and pycor >= 9 and pycor < 12 ] [
-    set pcolor pink
-  ]
+; Procedure to set up supermarket agents
+to setup-supermarkets
+  create-supermarkets number-of-supermarkets [
+    move-to one-of districts with [ color = brown or color = blue] ; set starting position
+      set shape "square" ; Set the shape of the supermarket store agent to square
+      set color red ; Set the colour of the supermarket store agent to red
+      ;setxy random-xcor random-ycor
 
-  ask patches with [ pxcor >= 18 and pxcor < 21 and pycor >= 15 and pycor < 18 ] [
-    set pcolor green
   ]
+end
 
-  ask patches with [ pxcor >= 6 and pxcor < 9 and pycor >= 15 and pycor < 18 ] [
-    set pcolor green
-  ]
+to setup-convenience-stores
+  create-convenience-stores number-of-convenience-stores [
+    move-to one-of districts with [ color = green or color = blue or color = orange or color = yellow or color = pink] ; set starting position
+      set shape "square" ; Set the shape of the supermarket store agent to square
+      set color black ; Set the colour of the supermarket store agent to red
+      setxy random-xcor random-ycor
+    ]
+end
 
-  ask patches with [ pxcor >= 0 and pxcor < 3 and pycor >= 18 and pycor < 21 ] [
-    set pcolor green
-  ]
-
+to setup-proximity-stores
+  create-proximity-stores number-of-proximity-stores [
+    move-to one-of districts with [ color = green or color = blue or color = orange or color = yellow or color = pink] ; set starting position
+      set shape "square" ; Set the shape of the supermarket store agent to square
+      set color cyan ; Set the colour of the supermarket store agent to red
+      setxy random-xcor random-ycor
+    ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-647
-448
+307
+22
+805
+521
 -1
 -1
-13.0
+23.333333333333332
 1
 10
 1
@@ -221,15 +144,94 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+0
+20
+0
+20
 0
 0
 1
 ticks
 30.0
+
+BUTTON
+55
+74
+121
+107
+NIL
+Setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+132
+72
+195
+105
+NIL
+Go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+38
+147
+251
+180
+number-of-supermarkets
+number-of-supermarkets
+0
+7
+6.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+39
+193
+271
+226
+number-of-convenience-stores
+number-of-convenience-stores
+0
+20
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+38
+248
+272
+281
+number-of-proximity-stores
+number-of-proximity-stores
+0
+20
+20.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
