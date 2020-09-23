@@ -1,3 +1,16 @@
+globals [
+ ; b0      ; constant
+ ; b1      ; edu
+ ; b2      ; age
+  b3      ; env concerns
+  b4      ; health concerns
+  b5      ; WTP (or price sensitivity?)
+  b6      ; beta nutritional awareness
+  b7      ; beta socio economic status index
+  ;b8      ; willingness to move for shopping
+]
+
+
 ; ************************************************
 ; **********     Agent definition     ************
 ; ************************************************
@@ -30,20 +43,30 @@ districts-own [
 
 ; Create consumer variables
 consumers-own [
-  age
-  sex
+  ;age
+  ;edu                      ; level of education
   env                      ; stores the level of env concerns
   health.con               ; stores the level of health concerns
   wtp                      ; willingness to pay or price sensitivity?
   nutr.awareness           ; stores the level of awareness ( 0=unaware, 0.5 =medium  1=aware) info about healthy food)
   sc.s.index               ; indice di status socio economico
-  accessibility            ; Keeps track of max distance a counsumer is willing to travel
-  home-location            ; stores the home location of consumer
-  purchase.prb.t0          ; individual likelihood of purchasing healthy food at initiation, utility function discrete choice
-  purchase.prb             ; individual likelihood of purchasing healthy food, utility function discrete choice
+  ;accessibility           ; Keeps track of max distance a counsumer is willing to travel
+  location                 ; stores the home location of consumer
+  purchase-prb-0           ; individual likelihood of purchasing healthy food at initiation, utility function discrete choice
+  purchase-prb             ; individual likelihood of purchasing healthy food, utility function discrete choice
   Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet)
   need-to-shop
 
+]
+
+supermarkets-own [
+  localization
+]
+convenience-stores-own [
+  localization
+]
+proximity-stores-own [
+  localization
 ]
 ; ************************************************
 ; ************    Setup procedures    ************
@@ -142,7 +165,8 @@ to setup-supermarkets
     ;move-to one-of districts with [ color = brown or color = blue] ; set starting position veryfy how can they be not one over the other
       set shape "square" ; Set the shape of the supermarket store agent to square
       set color red ; Set the colour of the supermarket store agent to red
-    setxy random-xcor random-ycor ;if not any? supermarkets-here [ sprout 1] how to make just one supermarket on a patch?
+      set localization one-of districts with [ color = brown or color = blue]
+      move-to localization ;if not any? supermarkets-here   ;how to make just one supermarket on a patch?
 
   ]
 end
@@ -167,11 +191,91 @@ end
 
 ; procedures to set up consumers
 to setup-consumers
+
   create-consumers number-of-consumers [
     set shape "person" ; Set the shape of the supermarket store agent to square
     set color 125 ; Set the colour of the supermarket store agent to red
+    ;setxy random-xcor random-ycor
+    set need-to-shop 0
+    ;set purchase-prb purchase-prb0
+    ;set age random-float 65
+    ;set edu random-float 1.0
+    set env random-float 1.0
+    set health.con random-float 1.0
+    set wtp random-float 1.0
+    set nutr.awareness random-float 1.0
+    set sc.s.index random-float 1.0    ;verify how between values can be assigned
+    ;set accessibility random-float 1.0
+    set Total.health 10
   ]
+
+  ask consumers [
+    if sc.s.index <= 0.24
+    [set location district 3
+     move-to location]
+
+    if sc.s.index > 0.24 and sc.s.index <= 0.38
+    [set location district 4
+     move-to location]
+
+    if sc.s.index > 0.38 and sc.s.index <= 0.51
+    [set location district 5
+     move-to location]
+
+    if sc.s.index > 0.51 and sc.s.index <= 0.64
+    [set location district 2
+     move-to location]
+
+    if sc.s.index > 0.64 and sc.s.index <= 0.77
+    [set location district 1
+     move-to location]
+
+    if sc.s.index > 0.77 and sc.s.index <= 0.99
+    [set location district 0
+     move-to location]
+  ]
+
 end
+
+
+; ************************************************
+; ************     Go procedures      ************
+; ************************************************
+
+; Procedure called every time the model iterates
+
+
+; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
+; TO DO
+to purchse-prb-init-parameters
+  ;set b0  -6.321  ; constant
+  ;set b1  .655    ; edu
+  ;set b2  .016    ; age
+  set b3  .287    ; env concerns
+  set b4  .623    ; health concerns
+  set b5  .178    ; WTP (or price sensitivity?)
+  set b6  .101    ; beta nutritional awareness
+  set b7  .100    ; beta socio economic status index
+; setb8
+end
+
+
+;; diventa la probability to shop Report the probability to consume a meal based on healthy meals using the inverse log reg function at the beginning of the simulation
+;to-report purchase-prb0
+  ;let y ( (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) ) ;TO DO *noseyfactor to mimic crises
+  ;let above e ^ y
+  ;let below (1 + e ^ y)
+  ;report (1 - (above / below))
+;end
+
+;; Report the probability to consume a meal based on healthy meals using the inverse log reg function at any time during the simulation
+;to-report purchase-prb
+ ; let y ( (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) ) ;* noseyfactor
+ ; let above e ^ y
+ ; let below (1 + e ^ y)
+ ; report (1 - (above / below))
+;end
+
 
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -281,15 +385,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-39
-308
-229
-341
+37
+304
+234
+337
 number-of-consumers
 number-of-consumers
 0
-20
-11.0
+100
+50.0
 1
 1
 NIL
