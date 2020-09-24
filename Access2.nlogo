@@ -299,21 +299,28 @@ To go
 
   ask consumers [
     set need-to-shop need-to-shop + random-float 1
-    ifelse need-to-shop > 0.4 [ set purchase-prb est-prb] [set need-to-shop 0]
+    ifelse need-to-shop > 0.4 [
+      shop
+      set purchase-prb est-prb]
+    [set need-to-shop 0]
   ] ;prb it is never 0
+
+
+
   tick
 end
 
-to shop-behaviour ; is not working
+to shop ; is not working
   ; at the end this procedure I should find the purchase probability of healthy food in population if they find the good conditionin the stores around
   ; I would like to plot the probbaility of healthy.choice of population, and the actual purchase ideally explore it against fai (food accessibility index)
   ask consumers [
     set purchase-prb est-prb
-    ifelse  purchase-prb > [fai] of [districts] of myself
+    ifelse  purchase-prb > [wtp] of myself
     [set healthy.choice 1]
     [set healthy.choice 0]
   ]
-  tick
+
+
     ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
     ;felse  [sc.s.index] of myself > [attractiveness] of candidate-stores [
      ; set healthy.choice healthy.choice + 1
