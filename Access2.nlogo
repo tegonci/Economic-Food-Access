@@ -89,7 +89,7 @@ proximity-stores-own [
 to setup
   clear-all
   reset-ticks
-
+  purchse-prb-init-parameters
   setup-patches
   setup-districts
   setup-supermarkets
@@ -283,14 +283,14 @@ end
 ; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
 ; TO DO
 to purchse-prb-init-parameters
-  set b0  -6.321  ; constant
+  set b0  0  ; constant
   ;set b1  .655    ; edu
   ;set b2  .016    ; age
-  set b3  .287    ; env concerns
-  set b4  .623    ; health concerns
-  set b5  .101    ; perceived living cost used as a proxy for price sensitivity
-  set b6  .101    ; beta nutritional awareness
-  set b7  .100    ; beta socio economic status index
+  set b3  0.287    ; env concerns
+  set b4  0.623    ; health concerns
+  set b5  0.101    ; perceived living cost used as a proxy for price sensitivity
+  set b6  0.101    ; beta nutritional awareness
+  set b7  0.100    ; beta socio economic status index
 ; setb8
 end
 
@@ -300,8 +300,7 @@ To go
   ask consumers [
     set need-to-shop need-to-shop + random-float 1
     ifelse need-to-shop > 0.4 [
-      shop
-      set purchase-prb est-prb]
+      shop]
     [set need-to-shop 0]
   ] ;prb it is never 0
 
@@ -315,9 +314,11 @@ to shop ; is not working
   ; I would like to plot the probbaility of healthy.choice of population, and the actual purchase ideally explore it against fai (food accessibility index)
   ask consumers [
     set purchase-prb est-prb
+    show purchase-prb
     ifelse  purchase-prb > [wtp] of myself
     [set healthy.choice 1]
     [set healthy.choice 0]
+
   ]
 
 
@@ -367,6 +368,7 @@ end
 ; the euqtion is working but is not updating I obtain always the same value (0,5). i used uncertainty, to check if the equation was working.
 to-report est-prb
  let y (b0 + (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) )
+  show (word  who " env : " env ", health.con: " health.con ", wtp : " wtp ", nutr.awareness : " nutr.awareness ", sc.s.index : " sc.s.index ", result y : " y)
  let above e ^ y
  let below (1 + e ^ y)
  report (1 - (above / below)) ;* uncertainty obviously need to be around a standard deviation etc to check
@@ -514,6 +516,24 @@ uncertainty
 1
 NIL
 HORIZONTAL
+
+PLOT
+910
+59
+1110
+209
+Healthy choice of consumers
+ticks
+healthy.choice
+0.0
+1.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot sum [healthy.choice] of consumers"
 
 @#$#@#$#@
 ## WHAT IS IT?
