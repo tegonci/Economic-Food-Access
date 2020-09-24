@@ -34,6 +34,7 @@ breed [consumers consumer]
 districts-own [
   n.citizens              ; count the number of citizen per district at each 365 day 1 year period
   total-health            ; sumup all health status of current agents
+  d.healthy.choices       ; sumup all positive helathy choice in one district
   total-consumers         ; n. of times a consumer hit local shops, to serve as reference for shops that want to move
   fai                     ; food accessibility index
   sci                     ; socio economical status index
@@ -54,9 +55,12 @@ consumers-own [
   purchase-prb             ; individual likelihood of purchasing healthy food, utility function discrete choice, should be done weekly (every 7 ticks)
   Total.health             ; keep track record of health status, subject to the purchase of healthy food (healthy diet), updated weekly
   need-to-shop             ; activity updated weekly
-  healthy.choice           ; results of shop behaviours
+  healthy.choice           ; positive results of shop behaviours
+  ;healthy.choice2         ; negative results of shop behaviours
   destination              ; best retailer
   newlocation              ; if no best retailer options, relocate to a new district with better fai
+  n.healthy.choices       ;total of choices
+  ;n.healthy.choices2
 
 ]
 
@@ -113,6 +117,7 @@ to setup-districts ;
   [ set shape "square"
     set size 6
     setxy random-xcor random-ycor
+
   ]
 
   ask district 0
@@ -121,7 +126,7 @@ to setup-districts ;
     set pri 0.99
     set fai 0.36
     setxy 10 10
-    ;set n.consumer 100
+    set d.healthy.choices 0
   ]
 
   ask district 1
@@ -130,7 +135,7 @@ to setup-districts ;
     set pri 0.99
     set fai 0.74
     setxy 2 11
-    ;set n.consumer 100
+    set d.healthy.choices 0
   ]
 
   ask district 2
@@ -139,7 +144,7 @@ to setup-districts ;
     set pri 0.57
     set fai 0.46
     setxy 17 3
-    ;set n.consumer 100
+    set d.healthy.choices 0
   ]
 
   ask district 3
@@ -148,7 +153,7 @@ to setup-districts ;
     set pri 0.21
     set fai 0.74
     setxy 17 9
-    ;set n.consumer 100
+    set d.healthy.choices 0
   ]
 
   ask district 4
@@ -157,16 +162,16 @@ to setup-districts ;
     set pri 0.35
     set fai 0.55
     setxy 12 15
-    ;set n.consumer 100
+    set d.healthy.choices 0
   ]
 
   ask district 5
   [ set color brown
     set sci 0.77
     set pri 0.35
-    set fai 0.55 ;TO DO correct
+    set fai 0.25
     setxy 4 5
-    ;set n.consumer 100
+    set d.healthy.choices 0
   ]
 
 
@@ -226,7 +231,8 @@ to setup-consumers
     set color 125 ; Set the colour of the supermarket store agent to red
     ;setxy random-xcor random-ycor
     set need-to-shop 0
-    set healthy.choice 0
+    set healthy.choice 1
+    ;set healthy.choice2 1
     set purchase-prb 0
     ;set age random-float 65
     ;set edu random-float 1.0
@@ -236,6 +242,8 @@ to setup-consumers
     set sc.s.index random-float 1.0    ;verify how between values can be assigned
     set destination 0
     set Total.health 10
+    set n.healthy.choices  1
+    ;set n.healthy.choices2 1
   ]
 
   ask consumers [
@@ -280,10 +288,10 @@ end
 
 ; Procedure called every time the model iterates
 
-; Initialize parameters of the DM process based on the results of the log regress conducted on the BSA survey (2016)
-; TO DO
-to purchse-prb-init-parameters
-  set b0  0  ; constant
+
+; TO DO with a real survay or data collected on Milano
+to purchse-prb-init-parameters ;Initialize parametersof the DM process, initial parameters are taken from a real survay [BSA survey (2016)] of another case but they are arbitrary
+  set b0  0        ; constant but for the moment we don't have hte full analysis so it is kept to zero
   ;set b1  .655    ; edu
   ;set b2  .016    ; age
   set b3  0.287    ; env concerns
@@ -304,7 +312,14 @@ To go
     [set need-to-shop 0]
   ] ;prb it is never 0
 
+  ask consumers[
+    consumers-stat
+  ]
 
+  ask districts [
+   district-stat
+   update-labels
+  ]
 
   tick
 end
@@ -320,52 +335,12 @@ to shop ; is not working
     [set healthy.choice 0]
 
   ]
+   ; TO DO update health and implement supermarket choise and relocate after tot times you have not satisfied your choices
 
-
-    ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
-    ;felse  [sc.s.index] of myself > [attractiveness] of candidate-stores [
-     ; set healthy.choice healthy.choice + 1
-      ; set Total.health Total.health + 0.5
-      ;]
-     ; [set healthy.choice healthy.choice + 0
-     ;set Total.health Total.health - 0.5]
-     ;]
-    ;first hypotesis with random
-    ;let random.p precision(random-float 1)2
-    ;if (purchase-prb > random.p) [
-     ;set destination one-of turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores]
-      ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] in-radius 5
-      ;let best-candidate min-one-of candidate-stores [ distance myself + price-index ]
-      ;set destination best-candidate
-    ;]
- ; not working
- ;ifelse purchase-prb <= 0.3 [
-    ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
-    ;let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
-    ;set destination best-candidate
-      ;if not any? best-candidate [relocate]
-    ;set healthy.choice healthy.choice + 0
-    ;set Total.health Total.health - 0.5 ; unhealthy diets are responsible of health issues
-    ;]
-    ;[
-    ;let candidate-stores turtles with [ breed = supermarkets or breed = convenience-stores or breed = proximity-stores ] ;in-radius 20
-    ;ifelse  [sc.s.index] of myself > [attractiveness] of candidate-stores
-     ; [
-      ;let best-candidate max-one-of candidate-stores [ distance myself + [food-quality] of candidate-stores ]
-      ; set destination best-candidate
-       ;set healthy.choice healthy.choice + 1
-       ;set Total.health Total.health + 0.5
-      ;]
-      ;[
-      ;let best-candidate min-one-of candidate-stores [ distance myself + [price-index] of candidate-stores ]
-      ;set destination best-candidate
-      ; set healthy.choice healthy.choice + 0
-  ; set Total.health Total.health - 0.5]]
 end
 
 
 ;; probability to shop a meal based on healthy meals using the inverse log reg function at any time during the simulation
-; the euqtion is working but is not updating I obtain always the same value (0,5). i used uncertainty, to check if the equation was working.
 to-report est-prb
  let y (b0 + (b3 * env) + (b4 * health.con) + (b5 * wtp) + (b6 * nutr.awareness) + (b7 * sc.s.index) )
  ; show (word  who " env : " env ", health.con: " health.con ", wtp : " wtp ", nutr.awareness : " nutr.awareness ", sc.s.index : " sc.s.index ", result y : " y)
@@ -380,6 +355,25 @@ end
 
 ;To relocate -shops, if agents not satisfied of hte number of client they should move to the closer  district with better overall number of client (sum of all client in teh shop in the districts)
 ;end
+
+ to district-stat ; district proc.
+   set n.citizens count consumers-here
+   set d.healthy.choices sum [healthy.choice] of consumers-here
+  ;show d.healthy.choices
+end
+
+to update-labels
+  ask districts  [
+    set label (word fai)
+    set label-color black]
+
+end
+
+to consumers-stat
+  set n.healthy.choices sum [healthy.choice] of consumers
+  show n.healthy.choices
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 307
@@ -530,10 +524,33 @@ NIL
 0.0
 1.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot mean [healthy.choice] of consumers"
+"H1" 1.0 0 -16777216 true "" "plot mean [n.healthy.choices] of consumers"
+
+PLOT
+925
+254
+1125
+404
+Healthy Choices in each district
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"d0" 1.0 0 -16777216 true "" "plot [d.healthy.choices] of district 0"
+"d1" 1.0 0 -7500403 true "" "plot [d.healthy.choices] of district 1"
+"d2" 1.0 0 -2674135 true "" "plot [d.healthy.choices] of district 2"
+"d3" 1.0 0 -955883 true "" "plot [d.healthy.choices] of district 3"
+"d4" 1.0 0 -6459832 true "" "plot [d.healthy.choices] of district 4"
+"d5" 1.0 0 -1184463 true "" "plot [d.healthy.choices] of district 5"
 
 @#$#@#$#@
 ## WHAT IS IT?
